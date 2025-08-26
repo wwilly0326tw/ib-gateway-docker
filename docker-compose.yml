@@ -1,56 +1,55 @@
-name: algo-trader
 services:
   ib-gateway:
+    image: ghcr.io/gnzsnz/ib-gateway:stable
+    user: "0:0"                         # 避免掛載目錄/密碼檔權限問題
     restart: always
-    build:
-      context: ./latest
-      tags:
-        - "ghcr.io/gnzsnz/ib-gateway:latest"
-    image: ghcr.io/gnzsnz/ib-gateway:latest
     environment:
-      TWS_USERID: "monitordoctor"
-      TWS_PASSWORD_FILE: /run/secrets/tws_password
-      TRADING_MODE: "live"
-      TWS_USERID_PAPER: "monitordoctor"
-      TWS_SETTINGS_PATH: ${TWS_SETTINGS_PATH:-}
-      TWS_ACCEPT_INCOMING: "yes"
-      READ_ONLY_API: "yes"
-      VNC_SERVER_PASSWORD: ${VNC_SERVER_PASSWORD:-}
-      TWOFA_TIMEOUT_ACTION: "restart"
-      BYPASS_WARNING: "yes"
-      AUTO_RESTART_TIME: "18:00"
-      AUTO_LOGOFF_TIME: ${AUTO_LOGOFF_TIME:-}
-      TWS_COLD_RESTART: ${TWS_COLD_RESTART:-}
-      SAVE_TWS_SETTINGS: "yes"
-      RELOGIN_AFTER_TWOFA_TIMEOUT: "yes"
-      TWOFA_EXIT_INTERVAL: ${TWOFA_EXIT_INTERVAL:-60}
-      TWOFA_DEVICE: ${TWOFA_DEVICE:-}
-      EXISTING_SESSION_DETECTED_ACTION: ${EXISTING_SESSION_DETECTED_ACTION:-primary}
-      ALLOW_BLIND_TRADING: ${ALLOW_BLIND_TRADING:-no}
-      TIME_ZONE: "Asia/Taipei"
-      TZ: "Asia/Taipei"
-      CUSTOM_CONFIG: ${CUSTOM_CONFIG:-NO}
-      JAVA_HEAP_SIZE: ${JAVA_HEAP_SIZE:-}
-      SSH_TUNNEL: ${SSH_TUNNEL:-}
-      SSH_OPTIONS: ${SSH_OPTIONS:-}
-      SSH_ALIVE_INTERVAL: ${SSH_ALIVE_INTERVAL:-}
-      SSH_ALIVE_COUNT: ${SSH_ALIVE_COUNT:-}
-      SSH_PASSPHRASE: ${SSH_PASSPHRASE:-}
-      SSH_REMOTE_PORT: ${SSH_REMOTE_PORT:-}
-      SSH_USER_TUNNEL: ${SSH_USER_TUNNEL:-}
-      SSH_RESTART: ${SSH_RESTART:-}
-      SSH_VNC_PORT: ${SSH_VNC_PORT:-}
-    secrets:
-        - tws_password
+      # === 不讀 config.ini，全部用環境變數 ===
+      - CUSTOM_CONFIG=NO
+
+      # === 帳號/密碼（由檔案讀入，避免明文） ===
+      - TWS_USERID=monitordoctor        # 你的 IB 帳號
+      - TWS_PASSWORD_FILE=/home/ibgateway/.secret/tws_password
+
+      # === 你原本 config.ini 的對應鍵 ===
+      - TRADING_MODE=live               # TradingMode=live
+      - TIME_ZONE=Asia/Taipei           # TimeZone=Asia/Taipei
+      - AUTO_RESTART_TIME= "6:00 PM"    # AutoRestartTime=6:05 PM（12小時制）
+      - RELOGIN_AFTER_TWOFA_TIMEOUT=yes # ReloginAfterSecondFactorTimeout=yes
+      - TWOFA_TIMEOUT_ACTION=restart    # TwoFactorTimeoutAction=restart
+      - EXISTING_SESSION_DETECTED_ACTION=primary   # ExistingSessionDetectedAction=primary
+      - SAVE_TWS_SETTINGS=yes           # SaveTwsSettingsAt=yes
+      - MINIMIZE_MAIN_WINDOW=no         # MinimizeMainWindow=no
+      - BYPASS_WARNING=yes              # BypassWarning=yes
+      - LOGIN_DIALOG_DISPLAY_TIMEOUT=120  # LoginDialogDisplayTimeout=120
+      - READ_ONLY_API=yes               # ReadOnlyApi=yes
+      - TWS_ACCEPT_INCOMING=yes         # AcceptIncomingConnectionAction=yes
+
+      # === IBC 指令伺服器（等同 CommandServerPort/BindAddress/ControlFrom）===
+      - COMMAND_SERVER_PORT=7462
+      - BIND_ADDRESS=0.0.0.0
+      - CONTROL_FROM=127.0.0.1,172.20.0.1   # 允許本機與主機(bridge)IP
+
+      # === TWS 設定路徑（放 jts.ini 與偏好） ===
+      - TWS_SETTINGS_PATH=/home/ibgateway/tws_settings
+      - TZ=Asia/Taipei
+
+      - VNC_SERVER_PASSWORD="12345"
+
     volumes:
-          - "./jts.ini:/home/ibgateway/Jts/jts.ini"
-            #      - "./config.ini:/home/ibgateway/ibc/config.ini"
-    #       - "./tws_settings/:/home/ibgateway/Jts"
-    #      - ${PWD}/ssh/:/home/ibgateway/.ssh
+      - ./tws_settings:/home/ibgateway/tws_settings
+      - ./jts.ini:/home/ibgateway/tws_settings/jts.ini:ro
+      - ./secrets/tws_password.txt:/home/ibgateway/.secret/tws_password:ro
+
     ports:
-      - "127.0.0.1:4001:4003"
-      - "127.0.0.1:4002:4004"
-      - "127.0.0.1:5900:5900"
-secrets:
-    tws_password:
-       file: ./secrets/tws_password.txt
+      - "127.0.0.1:4001:4003"     # live API
+      - "127.0.0.1:7462:7462"     # IBC 指令伺服器（只綁本機；遠端請用 SSH 隧道）
+      - "0.0.0.0:5900:5900"
+
+    healthcheck:
+      test: ["CMD-SHELL", "bash -lc 'exec 3<>/dev/tcp/127.0.0.1/4003 || exec 3<>/dev/tcp/127.0.0.1/4004'"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+
