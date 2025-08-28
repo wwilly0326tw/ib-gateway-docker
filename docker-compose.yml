@@ -38,7 +38,7 @@ services:
 
     volumes:
       - ./tws_settings:/home/ibgateway/tws_settings
-      - ./jts.ini:/home/ibgateway/tws_settings/jts.ini:ro
+        # - ./jts.ini:/home/ibgateway/tws_settings/jts.ini:ro
       - ./secrets/tws_password.txt:/home/ibgateway/.secret/tws_password:ro
 
     ports:
