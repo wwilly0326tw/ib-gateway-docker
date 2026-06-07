@@ -40,7 +40,6 @@ services:
       - ./tws_settings:/home/ibgateway/tws_settings
         # - ./jts.ini:/home/ibgateway/tws_settings/jts.ini:ro
       - ./secrets/tws_password.txt:/home/ibgateway/.secret/tws_password:ro
-
     ports:
       - "127.0.0.1:4001:4003"     # live API
       - "127.0.0.1:7462:7462"     # IBC 指令伺服器（只綁本機；遠端請用 SSH 隧道）
