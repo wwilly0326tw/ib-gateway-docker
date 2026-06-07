@@ -14,7 +14,7 @@ services:
       # === 你原本 config.ini 的對應鍵 ===
       - TRADING_MODE=live               # TradingMode=live
       - TIME_ZONE=Asia/Taipei           # TimeZone=Asia/Taipei
-      - AUTO_RESTART_TIME= "6:00 PM"    # AutoRestartTime=6:05 PM（12小時制）
+      - AUTO_RESTART_TIME=              # Disable the daily IB Gateway restart
       - RELOGIN_AFTER_TWOFA_TIMEOUT=yes # ReloginAfterSecondFactorTimeout=yes
       - TWOFA_TIMEOUT_ACTION=restart    # TwoFactorTimeoutAction=restart
       - EXISTING_SESSION_DETECTED_ACTION=primary   # ExistingSessionDetectedAction=primary
